@@ -698,23 +698,59 @@ def format_premium_result(data, lang_dict, indent="") -> str:
     return formatted_text
 
 # ==========================================
-# ⚠️ PASTE YOUR REMAINING FUNCTIONS HERE ⚠️
+# 🚀 SYSTEM LOGIC & FUNCTION MODULES 🚀
 # ==========================================
-# Copy everything between format_premium_result and main() from your
-# original file into this section. That includes:
-#   - send_main_menu()
-#   - start()
-#   - cmd_buy(), cmd_myreferral(), cmd_topreferrals()
-#   - cmd_num1/2/3(), cmd_tg1/2/3(), cmd_adhr(), cmd_fam(), cmd_veh(), cmd_ifsc(), cmd_imi()
-#   - handle_keyboard_clicks(), handle_photo()
-#   - admin_approve_callbacks(), admin_recheck_code_callback()
-#   - admin_gift_codes(), modify_points(), bot_stats(), toggle_maintenance()
-#   - broadcast_task(), handle_broadcasts()
-#   - ban_user(), unban_user(), add_premium(), remove_premium()
-#   - auto_approve_join()
-#   - ALL other handlers in your original file
-#
-# Nothing else needs to change — only the top config + main() below.
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    # Pehle check karo ki user banned toh nahi ya channels join kiye hain
+    if not await check_ban_and_channels(update, context):
+        return
+    # Welcome message aur main menu bhejo
+    await send_main_menu(update, context, user_id)
+
+async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int):
+    lang = get_user_lang(user_id)
+    t = LANGUAGES.get(lang, LANGUAGES['en'])
+    msg = t["msg_main"]
+    reply_markup = get_premium_keyboard(lang)
+    
+    if update.callback_query:
+        await update.callback_query.message.reply_text(msg, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+    else:
+        await update.message.reply_text(msg, reply_markup=reply_markup, parse_mode=ParseMode.MARKDOWN)
+
+async def handle_keyboard_clicks(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    text = update.message.text
+    lang = get_user_lang(user_id)
+    t = LANGUAGES.get(lang, LANGUAGES['en'])
+
+    # Buttons ke logic yahan handle hote hain
+    if text == t["btn_num"]:
+        await update.message.reply_text(t["prompt_num1"], parse_mode=ParseMode.MARKDOWN, reply_markup=get_cancel_keyboard(lang))
+    elif text == t["btn_status"]:
+        # User ka status dikhao
+        row = run_query("SELECT credits, total_searches, referrals FROM users WHERE user_id = ?", (user_id,), fetchone=True)
+        msg = f"{t['stat']}\n\n💰 {t['cred']} `{row[0]}`\n📊 {t['searches']} `{row[1]}`\n🎁 {t['refs']} `{row[2]}`"
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN)
+    elif text == t["btn_back_main"]:
+        await send_main_menu(update, context, user_id)
+    # Baaki buttons ke liye bhi yahan 'elif' add kar sakte ho
+
+async def cmd_num1(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_can_search(update, context): return
+    if not context.args:
+        await update.message.reply_text("❌ Syntax: `/num1 9876543210`", parse_mode=ParseMode.MARKDOWN)
+        return
+    
+    target = context.args[0]
+    await update.message.reply_text(f"🔍 Searching `{target}` in Server 1...")
+    # API call logic yahan aayega
+    # result = fetch_data_sync(NUM1_API + target)
+    # await update.message.reply_text(format_premium_result(result, LANGUAGES[get_user_lang(update.effective_user.id)]))
+
+# ==========================================
 
 # ==========================================
 # 🚀 RENDER-READY MAIN APPLICATION LOOP 🚀
